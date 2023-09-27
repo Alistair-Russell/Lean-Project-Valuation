@@ -26,7 +26,7 @@ class ArithmeticBrownianMotion:
         self.mu = mu
         self.sigma = sigma
 
-    def simulate(self, t: np.ndarray, n: int, rnd: np.random.RandomState) -> np.ndarray:
+    def simulate(self, t: np.ndarray, n: int, initial_vals: np.ndarray, rnd: np.random.RandomState) -> np.ndarray:
         # assertions for input parameters
         assert t.ndim == 1, "One dimensional time vector required"
         assert t.size > 0, "At least one time point is required"
@@ -36,7 +36,7 @@ class ArithmeticBrownianMotion:
         # transposed simulation for automatic broadcasting
         W = rnd.normal(size=(n, t.size))
         W_drift = (W * np.sqrt(dt) * self.sigma + self.mu * dt).T
-        return np.cumsum(W_drift, axis=0)
+        return initial_vals + np.cumsum(W_drift, axis=0)
 
     def distribution(self, t: float) -> rv_frozen:
         return norm(self.mu * t, self.sigma * np.sqrt(t))
@@ -49,7 +49,7 @@ class GeometricBrownianMotion:
         self.mu = mu
         self.sigma = sigma
 
-    def simulate(self, t: np.ndarray, n: int, rnd: np.random.RandomState) -> np.ndarray:
+    def simulate(self, t: np.ndarray, n: int, initial_vals: np.ndarray, rnd: np.random.RandomState) -> np.ndarray:
         # assertions for input parameters
         assert t.ndim == 1, "One dimensional time vector required"
         assert t.size > 0, "At least one time point is required"
@@ -59,7 +59,7 @@ class GeometricBrownianMotion:
         # transposed simulation for automatic broadcasting
         dW = (rnd.normal(size=(t.size, n)).T * np.sqrt(dt)).T
         W = np.cumsum(dW, axis=0)
-        return np.exp(self.sigma * W.T + (self.mu - self.sigma**2 / 2) * t).T
+        return initial_vals * np.exp(self.sigma * W.T + (self.mu - self.sigma**2 / 2) * t).T
 
     def distribution(self, t: float) -> rv_frozen:
         mu_t = (self.mu - self.sigma**2 / 2) * t

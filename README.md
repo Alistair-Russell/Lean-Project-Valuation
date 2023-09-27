@@ -5,6 +5,17 @@ Lean Project Valuation - modelling valuation of multi-period R&D invesment with 
 
 
 ## Updates
+### 09/27/23
+Three Stage Model
+- three period model with two distinct parties
+- the entrepreneurs decides whether to pivot the project at T=1
+- the investor chooses whether to abandon the project or continue with next stage investment at T=2
+
+Key ideas
+- a successful project pays out a three period growing annuity based on the expected valuation of the net cashflows as well as the development cost it took to get there (2*K)
+- an abandoned project has negative npv which is simply the single stage development cost before abandonment
+
+
 ### 09/08/23
 R&D1
 - Reviewed R&D1 to understand how that paper achieved valuation decisions while considering marginal cost
