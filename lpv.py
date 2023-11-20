@@ -29,16 +29,15 @@ from processes import GeometricBrownianMotion
 # Helper Functions
 def pv_growing_annuity(payoffs: np.ndarray, g: float, r: float, periods: int, start: int = 1):
     """Valuation of growing annuity, payments starting at a specified period"""
-    # TODO: fix this to allow for annuity that skips every n periods so costs work
-    # TODO: refactor so that this is vectorized
-    values = np.zeros_like(payoffs)
-    for i, payment in enumerate(payoffs):
-        cf = pd.DataFrame({'period':np.arange(start,start+periods),'cf':payment})
-        cf['cf'] = payment * (1+g)**(cf['period']-1)
-        cf['pv'] = cf['cf'] / (1+r)**(cf['period'])
-        npv = cf['pv'].sum()
-        values[i] = npv
-    return values
+    # Create an array of periods, discount factors, and growth factors
+    period_arr = np.arange(start, start + periods)
+    discount_factors = 1 / (1 + r) ** period_arr
+    growth_factors = (1 + g) ** (period_arr - 1)
+    # Calculate the present value of each payment
+    pv_payments = payoffs[:, np.newaxis] * growth_factors * discount_factors
+    # Sum the present values to get the NPV for each payment
+    values = np.nansum(pv_payments, axis=1)
+    return values.reshape(payoffs.shape)
 
 
 class LeanProjectValuation:
@@ -77,6 +76,7 @@ class LeanProjectValuation:
 
         # path and decision results
         self.paths = []
+        self.unaltered_paths = []
         self.exercise_decisions = []
         self.pivot_decisions = {}
 
@@ -89,6 +89,7 @@ class LeanProjectValuation:
         
         # only apply shocks to values below the pivot threshold
         draws = rnd.uniform(0, 2, size=cols)
+        draws = np.ones(cols)  # TODO: temporarily remove shocks
         mask = np.ma.masked_where(stage_values > self.threshold, stage_values)
         diff_mask = (mask * draws) - stage_values
         # create shocks by filling the array, store it
@@ -169,25 +170,32 @@ class LeanProjectValuation:
                 arrays.append(cf_sim[:-1,:])
             else:
                 arrays.append(cf_sim)
+
         # store paths
         simulated_paths = np.vstack(arrays)
         self.paths = simulated_paths
+        self.unaltered_paths = np.copy(simulated_paths)
 
         # generate exercise decisions to alter existing paths
         self._generate_optimal_exercise(t)
 
         # return unaltered paths rather than exercised paths
-        return simulated_paths
+        return self.unaltered_paths
 
-    def valuation(self):
+    def valuation(self, time_array, stages, unaltered: bool=False):
         """Returns npv of the project, averaging all paths less their costs
         """
-        payoffs = pv_growing_annuity(self.paths[-1,:], self.cf_mu, self.rfr, 3)
+        _ = self.generate_paths(time_array, stages)
+        if unaltered:
+            paths = self.unaltered_paths
+        else:
+            paths = self.paths
+
+        payoffs = pv_growing_annuity(paths[-1,:], self.cf_mu, self.rfr, 3)
         payoffs = payoffs / (1+self.rfr)**(3)
 
         # TODO: also needs pathwise valuation function
         costs = np.full_like(payoffs, self.co_inits)
-        costs[np.isnan(payoffs)] += self.co_inits / (1+self.rfr)**(2)
-        
+        costs[payoffs != 0] += self.co_inits / (1+self.rfr)**(2)
         return np.average(payoffs - costs)
 
