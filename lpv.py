@@ -89,7 +89,7 @@ class LeanProjectValuation:
         
         # only apply shocks to values below the pivot threshold
         draws = rnd.uniform(0, 2, size=cols)
-        draws = np.ones(cols)  # TODO: temporarily remove shocks
+        #draws = np.ones(cols)  # TODO: temporarily remove shocks
         mask = np.ma.masked_where(stage_values > self.threshold, stage_values)
         diff_mask = (mask * draws) - stage_values
         # create shocks by filling the array, store it
